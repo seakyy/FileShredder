@@ -3,5 +3,5 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="FileShredder/FileShredder.vcxproj" />
+  <Project Path="FileShredder/FileShredder.vcxproj" Id="5ad818ea-21ab-4fa7-a7d0-f2f48faff201" />
 </Solution>
