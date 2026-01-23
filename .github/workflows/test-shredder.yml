@@ -1,0 +1,54 @@
+name: C++ Build and Shredder Test
+
+on: [push, pull_request]
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup MSVC (Microsoft Visual C++ Compiler)
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Compile FileShredder
+      run: |
+        cl.exe /EHsc /O2 FileShredder.cpp /link /out:FileShredder.exe
+
+    - name: Run Automated Shredder Test
+      shell: python
+      run: |
+        import os
+        import subprocess
+
+        test_file = "top_secret.txt"
+        secret_content = "DIES_IST_EIN_GEHEIMNIS_12345"
+        
+        # 1. Testdatei erstellen
+        with open(test_file, "w") as f:
+            f.write(secret_content)
+        
+        # 2. Shredder starten und Eingaben simulieren (Pfad -> Bestätigung -> Exit)
+        # Wir übergeben 'y' für die Sicherheitsabfrage im C++ Programm
+        input_data = f"{test_file}\ny\nexit\n"
+        process = subprocess.run(['FileShredder.exe'], input=input_data, text=True, capture_output=True)
+        
+        print(process.stdout) # Zeige Output im GitHub Log
+
+        # 3. Verifizierung: Ist die Originaldatei weg?
+        if os.path.exists(test_file):
+            print("ERROR: Originaldatei existiert noch!")
+            exit(1)
+
+        # 4. Verifizierung: Ist der Inhalt in den .tmp Dateien verschwunden?
+        files = [f for f in os.listdir('.') if f.endswith('.tmp')]
+        for f_name in files:
+            with open(f_name, 'r', errors='ignore') as f:
+                content = f.read()
+                if secret_content in content:
+                    print(f"ERROR: Geheiminhalt in {f_name} gefunden!")
+                    exit(1)
+        
+        print("SUCCESS: Datei wurde geschreddert und unkenntlich gemacht.")
