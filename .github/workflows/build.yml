@@ -11,7 +11,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Setup MSVC (Microsoft Visual C++ Compiler)
-      uses: ilammy/msvc-dev-cmd@5b6c3f4c9c1a4de1b9ef8d7c6a3b2f1e0d9c8b7
+      uses: ilammy/msvc-dev-cmd@v1
 
     - name: Compile FileShredder
       run: |
@@ -32,7 +32,6 @@ jobs:
         with open(test_file, "w") as f:
             f.write(secret_content)
 
-        # Input simulieren: Dateiname -> y -> exit
         input_data = f"{test_file}\ny\nexit\n"
         
         print("Starte FileShredder.exe...")
