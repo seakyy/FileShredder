@@ -165,13 +165,30 @@ int main()
 			if (MoveFileA(filePath.c_str(), newName.c_str()))
 			{
 				std::cout << "[SUCCESS] Renamed to: " << newName << "\n";
+
+				if (DeleteFileA(newName.c_str()))
+				{
+					std::cout << "[SUCCESS] FINAL: File deleted permanently.\n";
+				}
+				else
+				{
+					std::cerr << "[ERROR] Could not delete temp file. Error: " << GetLastError() << "\n";
+				}
 			}
 			else
 			{
 				std::cerr << "[ERROR] Could not rename file. Error: " << GetLastError() << "\n";
-			}
+				std::cout << "[INFO] Trying to delete original file instead...\n";
 
-			// DeleteAFile function
+				if (DeleteFileA(filePath.c_str()))
+				{
+					std::cout << "[SUCCESS] FINAL: Original file deleted permanently.\n";
+				}
+				else
+				{
+					std::cerr << "[ERROR] Could not delete original file either. Error: " << GetLastError() << "\n";
+				}
+			}
 		}
 
 		std::cout << "\n----------------------------------------------\n\n";
