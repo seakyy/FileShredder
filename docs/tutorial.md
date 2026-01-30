@@ -1,5 +1,5 @@
 ---
-title: FileShredder Tutorial
+title: Tutorial
 ---
 
 # Building a DoD File Shredder in C++
