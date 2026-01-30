@@ -1,6 +1,13 @@
+.vscode/
 .vs/
 x64/
 bin/
 obj/
+Debug/
+Release/
 *.user
 *.log
+*.exe
+*.obj
+*.ilk
+*.pdb
