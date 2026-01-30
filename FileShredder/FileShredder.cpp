@@ -1,5 +1,6 @@
 // FileShredder.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
+// works with formats like .txt, .md, .exe, .jpg, .pptx, .mp4, .tmp
+// limits: .pdf, .svg, .zip,
 
 #include <iostream>
 #include <string>
@@ -9,6 +10,38 @@
 #include <algorithm>
 
 std::mt19937 rng(std::random_device{}());
+
+const int COLOR_DEFAULT = 7;
+const int COLOR_GREEN = 10;
+const int COLOR_RED = 12;
+const int COLOR_YELLOW = 14;
+const int COLOR_CYAN = 11;
+const int COLOR_MAGENTA = 13;
+
+void Log(std::string tag, std::string message)
+{
+	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+	int color = COLOR_DEFAULT;
+
+	if (tag == "[INFO]")
+		color = COLOR_CYAN;
+	else if (tag == "[SUCCESS]")
+		color = COLOR_GREEN;
+	else if (tag == "[WARNING]")
+		color = COLOR_YELLOW;
+	else if (tag == "[ERROR]")
+		color = COLOR_RED;
+	else if (tag == "[Processing]")
+		color = COLOR_MAGENTA;
+	else if (tag == "[ABORT]")
+		color = COLOR_RED;
+
+	SetConsoleTextAttribute(hConsole, color);
+	std::cout << tag;
+
+	SetConsoleTextAttribute(hConsole, COLOR_DEFAULT);
+	std::cout << " " << message << "\n";
+}
 
 std::string CleanPath(std::string path)
 {
@@ -53,6 +86,8 @@ bool OverwritePass(HANDLE hFile, long long fileSize, int patternType, int passNu
 	long long bytesRemaining = fileSize;
 	DWORD bytesWritten = 0;
 
+	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+	SetConsoleTextAttribute(hConsole, COLOR_DEFAULT);
 	std::cout << "   -> Pass " << passNumber << "/3 running...";
 
 	while (bytesRemaining > 0)
@@ -69,26 +104,30 @@ bool OverwritePass(HANDLE hFile, long long fileSize, int patternType, int passNu
 
 		if (!WriteFile(hFile, buffer.data(), toWrite, &bytesWritten, NULL))
 		{
-			std::cerr << "[ERROR] Write failed ! \n";
+			Log("[ERROR]", "Write failed!");
 			return false;
 		}
 
 		bytesRemaining -= bytesWritten;
 	}
 	FlushFileBuffers(hFile);
+	SetConsoleTextAttribute(hConsole, COLOR_GREEN);
 	std::cout << "OK.\n";
+	SetConsoleTextAttribute(hConsole, COLOR_DEFAULT);
 	return true;
 }
 
 int main()
 {
-	SetConsoleTitleA("File Shredder");
-	system("color 0C");
-
+	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+	SetConsoleTextAttribute(hConsole, COLOR_RED);
 	std::cout << "=====================================\n";
+	SetConsoleTextAttribute(hConsole, COLOR_DEFAULT);
 	std::cout << "            File Shredder            \n";
-	std::cout << "             Version 0.2             \n";
+	std::cout << "             Version 1.1             \n";
+	SetConsoleTextAttribute(hConsole, COLOR_RED);
 	std::cout << "=====================================\n";
+	SetConsoleTextAttribute(hConsole, COLOR_DEFAULT);
 
 	while (true)
 	{
@@ -102,7 +141,8 @@ int main()
 
 		std::string filePath = CleanPath(inputPath);
 
-		std::cout << "\n[INFO] Trying to open the file: " << filePath << "...\n";
+		std::cout << "\n";
+		Log("[INFO]", "Trying to open the file: " + filePath + "...");
 
 		HANDLE hFile = CreateFileA(
 			filePath.c_str(),
@@ -116,34 +156,37 @@ int main()
 		if (hFile == INVALID_HANDLE_VALUE)
 		{
 			DWORD error = GetLastError();
-			std::cerr << "[ERROR] Access denied! Error Code: " << error << "\n";
+			Log("[ERROR]", "Access denied! Error Code: " + std::to_string(error));
 			if (error == 32)
-				std::cerr << "-> File is being used by another program.\n";
+				Log("[ERROR]", "-> File is being used by another program.");
 		}
 		else
 		{
 			LARGE_INTEGER FileSize;
 			if (!GetFileSizeEx(hFile, &FileSize))
 			{
-				std::cerr << "[Error] Could not get Filesize.\n";
+				Log("[ERROR]", "Could not get Filesize.");
 				CloseHandle(hFile);
 				continue;
 			}
 
-			std::cout << "[INFO] Size: " << FileSize.QuadPart << "Bytes. \n";
-			std::cout << "[WARNING] Are you sure you want to perform 3-Pass DoD overwrite? (y/n): ";
+			Log("[INFO]", "Size: " + std::to_string(FileSize.QuadPart) + " Bytes.");
+			SetConsoleTextAttribute(hConsole, COLOR_YELLOW);
+			std::cout << "[WARNING]";
+			SetConsoleTextAttribute(hConsole, COLOR_DEFAULT);
+			std::cout << " Are you sure you want to SHRED this file? (y/n): ";
 
 			std::string confirm;
 			std::getline(std::cin, confirm);
 
 			if (confirm != "y")
 			{
-				std::cout << "[ABORT] Operation cancelled. \n";
+				Log("[ABORT]", "Operation cancelled.");
 				CloseHandle(hFile);
 				continue;
 			}
 
-			std::cout << "[Processing] Starting DoD overwrite...\n";
+			Log("[Processing]", "Starting DoD overwrite...");
 
 			if (!OverwritePass(hFile, FileSize.QuadPart, 0, 1))
 				break; // Pass 1: Zeros
@@ -152,11 +195,11 @@ int main()
 			if (!OverwritePass(hFile, FileSize.QuadPart, 2, 3))
 				break; // Pass 3: Random
 
-			std::cout << "[SUCCESS] File Content destroyed. \n";
+			Log("[SUCCESS]", "File Content destroyed.");
 
 			CloseHandle(hFile);
 
-			std::cout << "\n[INFO] Obfuscating file name... \n";
+			Log("[INFO]", "Obfuscating file name...");
 
 			size_t lastSlash = filePath.find_last_of("\\/");
 			std::string directory = (lastSlash == std::string::npos) ? "" : filePath.substr(0, lastSlash + 1);
@@ -164,29 +207,29 @@ int main()
 
 			if (MoveFileA(filePath.c_str(), newName.c_str()))
 			{
-				std::cout << "[SUCCESS] Renamed to: " << newName << "\n";
+				Log("[SUCCESS]", "Renamed to: " + newName);
 
 				if (DeleteFileA(newName.c_str()))
 				{
-					std::cout << "[SUCCESS] FINAL: File deleted permanently.\n";
+					Log("[SUCCESS]", "FINAL: File deleted permanently.");
 				}
 				else
 				{
-					std::cerr << "[ERROR] Could not delete temp file. Error: " << GetLastError() << "\n";
+					Log("[ERROR]", "Could not delete temp file. Error: " + std::to_string(GetLastError()));
 				}
 			}
 			else
 			{
-				std::cerr << "[ERROR] Could not rename file. Error: " << GetLastError() << "\n";
-				std::cout << "[INFO] Trying to delete original file instead...\n";
+				Log("[ERROR]", "Could not rename file. Error: " + std::to_string(GetLastError()));
+				Log("[INFO]", "Trying to delete original file instead...");
 
 				if (DeleteFileA(filePath.c_str()))
 				{
-					std::cout << "[SUCCESS] FINAL: Original file deleted permanently.\n";
+					Log("[SUCCESS]", "FINAL: Original file deleted permanently.");
 				}
 				else
 				{
-					std::cerr << "[ERROR] Could not delete original file either. Error: " << GetLastError() << "\n";
+					Log("[ERROR]", "Could not delete original file either. Error: " + std::to_string(GetLastError()));
 				}
 			}
 		}
