@@ -1,0 +1,72 @@
+name: C++ Build and Shredder Test
+
+on: [push, pull_request]
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup MSVC (Microsoft Visual C++ Compiler)
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Compile FileShredder
+      run: |
+        cl.exe /EHsc /O2 FileShredder/FileShredder.cpp /link /out:FileShredder.exe
+
+    - name: Run Automated Shredder Test
+      shell: python
+      run: |
+        import os
+        import sys
+        import subprocess
+
+        test_file = "top_secret.txt"
+        secret_content = "DIES_IST_EIN_GEHEIMNIS_12345?!$$"
+
+        print(f"Erstelle Testdatei: {test_file}")
+        with open(test_file, "w") as f:
+            f.write(secret_content)
+
+        input_data = f"{test_file}\ny\nexit\n"
+        
+        print("Starte FileShredder.exe...")
+        process = subprocess.run(
+            ['FileShredder.exe'], 
+            input=input_data, 
+            text=True, 
+            capture_output=True
+        )
+
+        output = process.stdout
+        print("----- PROGRAM OUTPUT START -----")
+        print(output)
+        print("----- PROGRAM OUTPUT END -----")
+
+        if process.stderr:
+            print("ERROR OUTPUT:", process.stderr)
+
+        if "Pass 3/3 running... OK" in output:
+            print("CHECK 1: Overwrite Logic passed.")
+        else:
+            print("CHECK 1: FAIL - Overwrite did not finish.")
+            sys.exit(1)
+
+        if os.path.exists(test_file):
+            print(f"CHECK 2: FAIL - Original file '{test_file}' still exists.")
+            sys.exit(1)
+        else:
+            print(f"CHECK 2: Original file deleted.")
+
+        tmp_files = [f for f in os.listdir('.') if f.endswith('.tmp')]
+        if tmp_files:
+            print(f"CHECK 3: FAIL - Temporary file '{tmp_files[0]}' was left behind.")
+            sys.exit(1)
+        else:
+            print("CHECK 3: Temporary file deleted.")
+
+        print("SUCCESS: File shredded and deleted.")
+        sys.exit(0)
