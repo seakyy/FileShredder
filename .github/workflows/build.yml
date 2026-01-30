@@ -1,0 +1,80 @@
+name: C++ Build and Shredder Test
+
+on: [push, pull_request]
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup MSVC (Microsoft Visual C++ Compiler)
+      uses: ilammy/msvc-dev-cmd@5b6c3f4c9c1a4de1b9ef8d7c6a3b2f1e0d9c8b7
+
+    - name: Compile FileShredder
+      run: |
+        cl.exe /EHsc /O2 FileShredder/FileShredder.cpp /link /out:FileShredder.exe
+
+    - name: Run Automated Shredder Test
+      shell: python
+      run: |
+        import os
+        import sys
+        import subprocess
+        import time
+
+        test_file = "top_secret.txt"
+        secret_content = "DIES_IST_EIN_GEHEIMNIS_12345?!$$"
+
+        print(f"Erstelle Testdatei: {test_file}")
+        with open(test_file, "w") as f:
+            f.write(secret_content)
+
+        # Input simulieren: Dateiname -> y -> exit
+        input_data = f"{test_file}\ny\nexit\n"
+        
+        print("Starte FileShredder.exe...")
+        process = subprocess.run(
+            ['FileShredder.exe'], 
+            input=input_data, 
+            text=True, 
+            capture_output=True
+        )
+
+        print("----- PROGRAM OUTPUT START -----")
+        print(process.stdout)
+        print("----- PROGRAM OUTPUT END -----")
+
+        if process.stderr:
+            print("ERROR OUTPUT:", process.stderr)
+
+        # Check 1: Wurde die Datei umbenannt? (Darf nicht mehr unter altem Namen existieren)
+        if os.path.exists(test_file):
+            print(f"FAIL: Die Originaldatei '{test_file}' existiert noch! (Renaming fehlgeschlagen?)")
+            sys.exit(1)
+        else:
+            print(f"OK: Originaldatei '{test_file}' ist nicht mehr auffindbar (wurde umbenannt).")
+
+        # Check 2: Existiert eine .tmp Datei?
+        files = [f for f in os.listdir('.') if f.endswith('.tmp')]
+        if not files:
+            print("FAIL: Keine .tmp Datei gefunden! (Renaming hat wohl nicht geklappt)")
+            sys.exit(1)
+        
+        tmp_file = files[0]
+        print(f"OK: Temporäre Datei gefunden: {tmp_file}")
+
+        # Check 3: Ist der Inhalt zerstört?
+        with open(tmp_file, 'rb') as f: 
+            content = f.read()
+            
+            if secret_content.encode() in content:
+                print(f"FAIL: FATAL! Der geheime Text wurde in {tmp_file} gefunden!")
+                sys.exit(1)
+            
+            print("Inhalt Check: Geheimnis ist weg.")
+
+        print("SUCCESS: Test erfolgreich bestanden!")
+        sys.exit(0)
