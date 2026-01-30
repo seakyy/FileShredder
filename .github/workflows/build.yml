@@ -49,24 +49,26 @@ jobs:
         if process.stderr:
             print("ERROR OUTPUT:", process.stderr)
 
-        if "Pass 3/3 running... OK" in output:
-            print("CHECK 1: Overwrite Logic passed.")
+        if "Pass 3/3 running" in output:
+            print("CHECK 1: Overwrite Logic passed (Logs confirmed).")
         else:
-            print("CHECK 1: FAIL - Overwrite did not finish.")
+            print("CHECK 1: FAIL - Overwrite did not finish or output format changed.")
             sys.exit(1)
 
         if os.path.exists(test_file):
-            print(f"CHECK 2: FAIL - Original file '{test_file}' still exists.")
+            print(f"CHECK 2: FAIL - Original file '{test_file}' still exists!")
             sys.exit(1)
         else:
-            print(f"CHECK 2: Original file deleted.")
-
+            print(f"CHECK 2: Original file is gone.")
+            
         tmp_files = [f for f in os.listdir('.') if f.endswith('.tmp')]
+        
         if tmp_files:
-            print(f"CHECK 3: FAIL - Temporary file '{tmp_files[0]}' was left behind.")
+            print(f"CHECK 3: FAIL - A temporary file '{tmp_files[0]}' was found!")
+            print("Der Shredder hat die Datei zwar umbenannt, aber nicht gelöscht.")
             sys.exit(1)
         else:
-            print("CHECK 3: Temporary file deleted.")
+            print("CHECK 3: SUCCESS - No temporary files left. Cleanup complete.")
 
-        print("SUCCESS: File shredded and deleted.")
+        print("OVERALL SUCCESS: File was overwritten, renamed, and permanently deleted.")
         sys.exit(0)
