@@ -117,13 +117,11 @@ int main()
 		{
 			DWORD error = GetLastError();
 			std::cerr << "[ERROR] Access denied! Error Code: " << error << "\n";
-
 			if (error == 32)
 				std::cerr << "-> File is being used by another program.\n";
 		}
 		else
 		{
-
 			LARGE_INTEGER FileSize;
 			if (!GetFileSizeEx(hFile, &FileSize))
 			{
@@ -172,6 +170,8 @@ int main()
 			{
 				std::cerr << "[ERROR] Could not rename file. Error: " << GetLastError() << "\n";
 			}
+
+			// DeleteAFile function
 		}
 
 		std::cout << "\n----------------------------------------------\n\n";
